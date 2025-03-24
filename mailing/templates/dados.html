@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt">
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Monitoramento</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        table { width: 80%; margin: 20px auto; border-collapse: collapse; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f4f4f4; }
+        canvas { max-width: 600px; margin: 20px auto; }
+    </style>
+</head>
+<body>
+    <h1>Painel de Monitoramento de Chamadas</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Origem</th>
+                <th>Destino</th>
+                <th>Início</th>
+                <th>Fim</th>
+                <th>Duração</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="call-table">
+            {% for call in calls %}
+            <tr>
+                <td>{{ call.origin }}</td>
+                <td>{{ call.destination }}</td>
+                <td>{{ call.start_time }}</td>
+                <td>{{ call.end_time }}</td>
+                <td>{{ call.duration }}</td>
+                <td>{{ call.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Estatísticas de Chamadas</h2>
+    <canvas id="callChart"></canvas>
+
+    <script>
+        function updateCallTable() {
+            $.getJSON("{% url 'call_list_api' %}", function(data) {
+                let tableContent = "";
+                data.forEach(call => {
+                    tableContent += `
+                        <tr>
+                            <td>${call.origin}</td>
+                            <td>${call.destination}</td>
+                            <td>${call.start_time}</td>
+                            <td>${call.end_time}</td>
+                            <td>${(new Date(call.end_time) - new Date(call.start_time)) / 1000} seg</td>
+                            <td>${call.status}</td>
+                        </tr>
+                    `;
+                });
+                $("#call-table").html(tableContent);
+            });
+        }
+
+        function updateChart() {
+            $.getJSON("{% url 'call_metrics' %}", function(data) {
+                callChart.data.datasets[0].data = [data.total_calls, data.total_duration, data.total_duration_formatted];
+                callChart.update();
+            });
+        }
+
+        let ctx = document.getElementById('callChart').getContext('2d');
+        let callChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Total Chamadas', 'Duração Total (seg)'],
+                datasets: [{
+                    label: 'Estatísticas',
+                    data: [0, 0],
+                    backgroundColor: ['blue', 'green']
+                }]
+            },
+            options: { responsive: true }
+        });
+
+    
+
+        setInterval(updateCallTable, 5000);
+        setInterval(updateChart, 5000);
+    </script>
+</body>
+{% endblock %}
+</html>
