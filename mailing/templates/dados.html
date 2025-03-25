@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 {% block content %}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,13 +9,41 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        table { width: 80%; margin: 20px auto; border-collapse: collapse; }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #f4f4f4; }
-        canvas { max-width: 600px; margin: 20px auto; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        canvas {
+            max-width: 400px;
+            margin: 20px auto;
+        }
+
+        .dashboard {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px;
+        }
     </style>
 </head>
+
 <body>
     <h1>Painel de Monitoramento de Chamadas</h1>
     <table>
@@ -42,12 +71,20 @@
         </tbody>
     </table>
 
+    <div id="alerts" style="color: red; font-weight: bold; margin: 10px;"></div>
+
     <h2>Estatísticas de Chamadas</h2>
-    <canvas id="callChart"></canvas>
+    <div class="dashboard">
+        <!-- Gráfico de Pizza -->
+        <canvas id="callChart" ></canvas>
+        <!-- Gráfico de Barras -->
+        <canvas id="callDurationChart"></canvas>
+    </div>
 
     <script>
+        // Função para atualizar a tabela de chamadas
         function updateCallTable() {
-            $.getJSON("{% url 'call_list_api' %}", function(data) {
+            $.getJSON("{% url 'call_list_api' %}", function (data) {
                 let tableContent = "";
                 data.forEach(call => {
                     tableContent += `
@@ -65,32 +102,54 @@
             });
         }
 
+        // Função para atualizar os gráficos
         function updateChart() {
-            $.getJSON("{% url 'call_metrics' %}", function(data) {
-                callChart.data.datasets[0].data = [data.total_calls, data.total_duration, data.total_duration_formatted];
+            $.getJSON("{% url 'call_metrics' %}", function (data) {
+                // Atualizando o gráfico de pizza (divisão entre chamadas curtas e longas)
+                callChart.data.datasets[0].data = [data.short_calls, data.long_calls];
                 callChart.update();
+
+                // Atualizando o gráfico de barras (total de chamadas e duração total)
+                callDurationChart.data.datasets[0].data = [data.total_calls, data.total_duration_seconds];
+                callDurationChart.update();
             });
         }
 
-        let ctx = document.getElementById('callChart').getContext('2d');
-        let callChart = new Chart(ctx, {
-            type: 'bar',
+        // Inicializando os gráficos
+        let ctxCall = document.getElementById('callChart').getContext('2d');
+        let callChart = new Chart(ctxCall, {
+            type: 'pie',  // Mudando para gráfico de pizza
             data: {
-                labels: ['Total Chamadas', 'Duração Total (seg)'],
+                labels: ['Chamadas Curtas', 'Chamadas Longas'],
                 datasets: [{
-                    label: 'Estatísticas',
+                    label: 'Distribuição de Chamadas',
                     data: [0, 0],
-                    backgroundColor: ['blue', 'green']
+                    backgroundColor: ['#ffcc00', '#ff6347'],
                 }]
             },
             options: { responsive: true }
         });
 
-    
+        let ctxDuration = document.getElementById('callDurationChart').getContext('2d');
+        let callDurationChart = new Chart(ctxDuration, {
+            type: 'bar',  // Gráfico de barras para total de chamadas e duração total
+            data: {
+                labels: ['Total Chamadas', 'Duração Total (seg)'],
+                datasets: [{
+                    label: 'Estatísticas',
+                    data: [0, 0],
+                    backgroundColor: ['blue', 'green'],
+                }]
+            },
+            options: { responsive: true }
+        });
 
+        // Atualizando os dados a cada 5 segundos
         setInterval(updateCallTable, 5000);
         setInterval(updateChart, 5000);
     </script>
 </body>
+
 {% endblock %}
+
 </html>
